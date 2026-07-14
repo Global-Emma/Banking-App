@@ -3,3 +3,10 @@
 @import "tailwindcss/utilities.css";
  
 @import "nativewind/theme";
+
+@theme {
+  --color-brand: #1DCF9F;
+  --color-brand-muted: #DBECE8;
+  --color-app-bg: #F8F9FB;
+  --color-charcoal: #111827;
+}
