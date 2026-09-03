@@ -1,9 +1,10 @@
 import "@/global.css";
+import api from "@/services/api";
 import { COLORS, DynamicIcon } from "@/utils/data";
 import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { styled } from "nativewind";
-import React, { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Pressable, ScrollView, Text, View, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 
 // ==========================================
@@ -66,11 +67,71 @@ const SERVICES_GRID = [
 // safe area view for nativewind styling
 const SafeAreaView = styled(RNSafeAreaView);
 
+interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  balance: number | string
+}
+
 // ==========================================
 // 3. MAIN WORKSPACE COMPONENT
 // ==========================================
 export default function Home() {
   const [hideBalance, setHideBalance] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true; // Prevents state updates if component unmounts mid-request
+
+    const fetchUserProfile = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/user/get-user');
+
+        if (response.data.success && isMounted) {
+          // Extract the nested 'user' object from the backend response envelope
+          setUser(response.data.user);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          const message = err.response?.data?.message || 'Failed to load user profile.';
+          setError(message);
+          Alert.alert('Error', message);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchUserProfile();
+
+    return () => {
+      isMounted = false; // Cleanup on component unmount
+    };
+  }, [])
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.brand} />
+      </View>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>{error || 'No user data found.'}</Text>
+      </View>
+    );
+  }
+  
 
   return (
     <SafeAreaView className="bg-app-bg flex-1">
@@ -82,7 +143,7 @@ export default function Home() {
               <FontAwesome name="dot-circle-o" size={24} color={COLORS.brand} />
             </View>
             <Text className="text-xl font-bold text-gray-800">
-              Hi, <Text className="font-extrabold text-brand">Glory</Text>
+              Hi, <Text className="font-extrabold text-brand">{user.fullName.split(" ")[1]}</Text>
             </Text>
           </View>
 
@@ -129,7 +190,7 @@ export default function Home() {
 
               <Pressable className="flex-row items-center gap-1.5 active:opacity-80">
                 <Text className="text-white text-2xl font-bold tracking-tight">
-                  {hideBalance ? "****" : "₦20,189.85"}
+                  {hideBalance ? "****" : `₦ ${user?.balance}`}
                 </Text>
                 <MaterialIcons
                   name="arrow-forward-ios"
